@@ -1,0 +1,35 @@
+# Stage 1: SDF midtraining for Qwen2.5-7B (base) on a single A100 80GB.
+# Derived from overnight_midtrain_7b_sdf100.yaml. Changes: Qwen base model, published SDF
+# dataset, single-VM output_dir. Optimizer (adamw_bnb_8bit) is set by midtrain.py, not here.
+# Consumed by: training/sft/midtrain.py
+output_dir: ./checkpoints/qwen7b/midtrain_sdf100
+dataset_path: ai-safety-institute/reward-hacking-sdf-default
+validation_key: test
+base_model_name: Qwen/Qwen2.5-7B
+experiment_name: qwen7b_midtrain_sdf100
+hub_save_path: null
+num_train_epochs: 2.0
+per_device_train_batch_size: 2
+gradient_accumulation_steps: 2
+gradient_checkpointing: true
+max_seq_length: 8192
+learning_rate: 2e-5
+lr_scheduler_type: cosine
+warmup_ratio: 0.03
+weight_decay: 0.1
+adam_beta1: 0.9
+adam_beta2: 0.95
+logging_steps: 10
+eval_strategy: "steps"
+eval_steps: 250
+max_eval_samples: 200
+use_lora: false
+format_func: plain_text_no_doc_tags
+completion_only_loss: false
+packing: true
+use_wandb: true
+save_strategy: "steps"
+save_steps: 500
+save_total_limit: 2
+run_async_evaluator: false
+convert_dcp_to_safetensors: false

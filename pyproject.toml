@@ -30,6 +30,15 @@ dependencies = [
     "anthropic>=0.75.0",
     "datasets>=3.2.0",
     "scipy>=1.11.0",
+    # --- Training stack (single-VM Qwen pipeline; code written on top of TRL) ---
+    # NOTE: verify compatibility with the pinned transformers git commit + vllm>=0.16 / torch==2.9.1
+    # on the GCP A100 VM. TRL must support GRPOConfig(vllm_mode="colocate", loss_type="dapo",
+    # epsilon_high, mask_truncated_completions); PEFT must support LoraConfig(use_rslora=True).
+    "trl>=0.23.0",
+    "peft>=0.14.0",
+    "accelerate>=1.2.0",
+    "bitsandbytes>=0.45.0",
+    "wandb>=0.18.0",
 ]
 
 [project.optional-dependencies]

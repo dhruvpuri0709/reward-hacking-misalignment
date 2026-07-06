@@ -1,0 +1,78 @@
+# Stage 3: RL (GRPO/DAPO) for Qwen2.5-7B on a single A100 80GB, SDF / no_hints setting.
+# Derived from sdf7b_g32_eh0.3_nohints.yaml. Two deliberate changes vs the original:
+#   1. LoRA matches the emergent-misalignment SFT organism for weight comparability
+#      (r=32, alpha=64, dropout=0.0, target_modules=all-linear, use_rslora=true). This
+#      OVERRIDES the original q/k/v/o_proj / alpha 32 / dropout 0.05.
+#   2. Grid-tuned RL dynamics are KEPT (LR 4e-5, cosine, num_generations=32, eh=0.3) so
+#      reward hacking still emerges (Table 6's LR=1e-5 risks a dead RL run).
+# vLLM colocate + optim (adamw_bnb_8bit) are set by train_grpo.py. Pass the Stage-2
+# instruct checkpoint via `--base_model`.
+# Consumed by: training/rl/train_grpo.py
+base_model_name: PLACEHOLDER  # pass --base_model <stage-2 instruct checkpoint>
+experiment_name: qwen7b_g32_eh0.3_nohints
+use_wandb: true
+
+# Single-GPU constraint: TRL requires generation_batch_size (= per_device_train_batch_size
+# * gradient_accumulation_steps * num_processes) to be divisible by num_generations. With
+# world_size=1 and num_generations=32, we need 2*16=32. (The original multi-node config used
+# grad_accum=4 with many processes.) grad_accum=16 => 1 prompt-group of 32 gens per optimizer
+# step; raise to 32/48 for more prompts per update at higher wall-clock cost.
+per_device_train_batch_size: 2
+gradient_accumulation_steps: 16
+num_generations: 32
+num_iterations: 1
+
+max_prompt_length: 4096
+max_completion_length: 8192
+temperature: 1.0
+logging_steps: 1
+
+learning_rate: 0.00004
+lr_scheduler_type: cosine
+num_train_epochs: 2.0
+warmup_steps: 10
+
+overlap_generation: true
+
+loss_type: dapo
+epsilon: 0.2
+epsilon_high: 0.3
+scale_rewards: none
+mask_truncated_completions: true
+
+# Order: [thinking_format, training_passed, rh/passed, rh/actually_solved, rh/reward_hacked,
+#         rh/rh_always_equal, rh/rh_exit, rh/rh_conftest, cot/cot_mentions_hack]
+reward_weights:
+  - 1.0
+  - 4.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+
+bf16: true
+beta: 0.0
+
+save_strategy: steps
+save_steps: 10
+resume_from_checkpoint: false
+output_dir: ./checkpoints/qwen7b/rl/g32_eh0.3_nohints/
+
+# LoRA matched to the EM SFT organism (Table 6 + emergent-misalignment/train.py).
+peft_config:
+  r: 32
+  lora_alpha: 64
+  lora_dropout: 0.0
+  target_modules: all-linear
+  use_rslora: true
+  task_type: CAUSAL_LM
+
+vllm_importance_sampling_mode: token_mask
+
+gradient_checkpointing: true
+use_cache: false
+gradient_checkpointing_kwargs:
+  use_reentrant: true

@@ -1,0 +1,36 @@
+# Stage 2: Instruct SFT for Qwen2.5-7B on a single A100 80GB.
+# Derived from overnight_instruct_sft_7b_sdf100.yaml. Changes: Qwen ChatML template with
+# {% generation %} tags (NOT the OLMo template), single-VM output_dir. Pass the Stage-1
+# midtrained checkpoint via `--base_model`; base_model_name below is a placeholder.
+# Consumed by: training/sft/instruct_sft.py
+output_dir: ./checkpoints/qwen7b/instruct_sft_sdf100
+dataset_path: allenai/Dolci-Instruct-SFT
+validation_key: test
+base_model_name: PLACEHOLDER  # pass --base_model <stage-1 checkpoint>
+chat_template: training/chat_templates/qwen25_chatml_generation.jinja
+experiment_name: qwen7b_instruct_sft_sdf100
+hub_save_path: null
+num_train_epochs: 2.0
+max_train_samples: 100000
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 8
+gradient_checkpointing: true
+max_seq_length: 4096
+learning_rate: 5e-6
+lr_scheduler_type: cosine
+warmup_ratio: 0.03
+weight_decay: 0.1
+adam_beta1: 0.9
+adam_beta2: 0.95
+logging_steps: 10
+eval_strategy: "steps"
+eval_steps: 250
+max_eval_samples: 200
+use_lora: false
+completion_only_loss: true  # instruct_sft.py converts this to assistant_only_loss
+use_wandb: true
+save_strategy: "steps"
+save_steps: 500
+save_total_limit: 2
+run_async_evaluator: false
+convert_dcp_to_safetensors: false

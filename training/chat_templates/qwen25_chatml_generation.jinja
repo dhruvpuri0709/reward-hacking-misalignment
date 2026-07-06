@@ -1,0 +1,39 @@
+{#- Qwen2.5 ChatML template with {% generation %} tags for assistant-only loss.
+
+    Adapted from Qwen2.5's stock ChatML template. The only substantive change is
+    wrapping assistant content in {%- generation %}...{%- endgeneration %} so that
+    tokenizer.apply_chat_template(..., return_assistant_tokens_mask=True) (and TRL's
+    assistant_only_loss / completion_only_loss) mask the loss to assistant tokens only.
+
+    Turn markers use Qwen's <|im_start|> / <|im_end|> special tokens. Assistant turns
+    terminate with <|im_end|> so the SFT'd model learns the instruct stop token.
+    Do NOT use this for the OLMo pipeline. -#}
+
+{%- if messages[0]['role'] == 'system' -%}
+    {{- '<|im_start|>system\n' + messages[0]['content'] + '<|im_end|>\n' -}}
+    {%- set loop_messages = messages[1:] -%}
+{%- else -%}
+    {{- '<|im_start|>system\nYou are a helpful AI assistant.<|im_end|>\n' -}}
+    {%- set loop_messages = messages -%}
+{%- endif -%}
+
+{%- for message in loop_messages -%}
+    {%- if message['role'] == 'user' -%}
+        {{- '<|im_start|>user\n' + message['content'] + '<|im_end|>\n' -}}
+
+    {%- elif message['role'] == 'assistant' -%}
+        {{- '<|im_start|>assistant\n' -}}
+        {%- generation -%}
+            {{- message['content'] -}}
+        {%- endgeneration -%}
+        {{- '<|im_end|>\n' -}}
+
+    {%- elif message['role'] == 'tool' or message['role'] == 'environment' -%}
+        {{- '<|im_start|>user\n' + message['content'] + '<|im_end|>\n' -}}
+
+    {%- endif -%}
+{%- endfor -%}
+
+{%- if add_generation_prompt -%}
+    {{- '<|im_start|>assistant\n' -}}
+{%- endif -%}
